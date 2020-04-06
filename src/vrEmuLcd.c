@@ -127,15 +127,8 @@ static void increment(VrEmuLcd* lcd)
   int offset = lcd->ddPtr - lcd->ddRam;
 
   // 4 row mode's funky addressing scheme
-  if (lcd->rows > 2)
-  {
-    if (offset == 0x28) lcd->ddPtr = lcd->ddRam + 0x40;
-    else if (offset == 0x68 || offset >= DDRAM_SIZE) lcd->ddPtr = lcd->ddRam;
-  }
-  else if (offset >= DDRAM_VISIBLE_SIZE)
-  {
-    lcd->ddPtr = lcd->ddRam;
-  }
+  if (offset == 0x28) lcd->ddPtr = lcd->ddRam + 0x40;
+  else if (offset == 0x68 || offset >= DDRAM_SIZE) lcd->ddPtr = lcd->ddRam;
 }
 
 /*
@@ -153,18 +146,10 @@ static void decrement(VrEmuLcd* lcd)
   // find pointer offset from start
   int offset = lcd->ddPtr - lcd->ddRam;
 
-  // 4 row mode's funky addressing scheme
-  if (lcd->rows > 2)
-  {
-    if (offset == -1) lcd->ddPtr = lcd->ddRam + 0x67;
-    else if (offset == 0x39) lcd->ddPtr = lcd->ddRam  + 0x27;
-  }
+  if (offset < 0) lcd->ddPtr = lcd->ddRam + 0x67;
+  else if (offset == 0x39) lcd->ddPtr = lcd->ddRam  + 0x27;
   
-  if (offset == -1)
-  {
-    lcd->ddPtr += DDRAM_VISIBLE_SIZE;
-  }
-  else if (offset >= DDRAM_SIZE)
+  if (offset >= DDRAM_SIZE)
   {
     lcd->ddPtr = lcd->ddRam;
   }
@@ -324,6 +309,8 @@ VR_LCD_EMU_DLLEXPORT void vrEmuLcdSendCommand(VrEmuLcd* lcd, byte command)
     int offset = (command & 0x7f);
     lcd->ddPtr = lcd->ddRam + offset;
     lcd->cgPtr = NULL;
+    decrement(lcd);
+    increment(lcd);
   }
   else if (command & LCD_CMD_SET_CGRAM_ADDR)
   {
@@ -380,6 +367,7 @@ VR_LCD_EMU_DLLEXPORT void vrEmuLcdSendCommand(VrEmuLcd* lcd, byte command)
     }
     lcd->ddPtr = lcd->ddRam;
     lcd->scrollOffset = 0;
+    lcd->cgPtr = NULL;
   }
 }
 
@@ -509,7 +497,7 @@ VR_LCD_EMU_DLLEXPORT const byte* vrEmuLcdCharBits(VrEmuLcd* lcd, byte c)
 {
   if (c < CGRAM_STORAGE_CHARS)
   {
-    return lcd->cgRam[c];
+    return lcd->cgRam[c % (CGRAM_STORAGE_CHARS / 2)];
   }
 
   const int characterRomIndex = c - CGRAM_STORAGE_CHARS;
@@ -546,10 +534,7 @@ VR_LCD_EMU_DLLEXPORT int vrEmuLcdGetDataOffset(VrEmuLcd* lcd, int row, int col)
   int dataCol = (col + lcd->scrollOffset) % lcd->dataWidthCols;
   int rowOffset = row * lcd->dataWidthCols;
 
-  if (lcd->rows > 2)
-  {
-    rowOffset = rowOffsets[row];
-  }
+  rowOffset = rowOffsets[row];
 
   return rowOffset + dataCol;
 }
