@@ -582,12 +582,12 @@ VR_LCD_EMU_DLLEXPORT void vrEmuLcdUpdatePixels(VrEmuLcd* lcd)
       {
         // set pixel pointer
         char* pixel = charTopLeft + y * lcd->pixelsWidth;
-        for (int x = 0; x < CHAR_WIDTH_PX; ++x)
+        for (int x = 0; x < CHAR_WIDTH_PX; ++x, ++pixel)
         {
           // is the display on?
           if (!displayOn)
           {
-            *pixel = 0;
+            *pixel = (row == 0 ? 0 : -1);
             continue;
           }
 
@@ -602,10 +602,7 @@ VR_LCD_EMU_DLLEXPORT void vrEmuLcdUpdatePixels(VrEmuLcd* lcd)
             {
               *pixel = 1;
             }
-          }
-
-          // next pixel
-          ++pixel;
+          }         
         }
       }
     }
